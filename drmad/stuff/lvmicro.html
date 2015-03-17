@@ -1,0 +1,107 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+
+<html>
+<head>
+<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=utf-8">
+<TITLE>Микрозадержки на LabVIEW</TITLE>
+<style type="text/css">
+   BODY {font-family:Arial; font-size:10pt; margin-left:10;margin-right:10} 
+   TD {font-family:Arial; font-size:10pt}
+   P {font-family:Arial; font-size:10pt; text-align:justify}
+   LI {font-family:Arial; font-size:10pt}
+   UL {font-family:Arial; font-size:10pt}   
+   PRE {font-family:Tahoma; font-size:10pt}
+   STRONG  {font-family:Arial; font-size:10pt}
+   CENTER {font-family:Arial; font-size:10pt}
+</style>	
+</head>
+
+<body>
+<table align="center" width="100%" cellspacing="0" cellpadding="0" border="0">
+<tr>
+    <td width="15%" height="25" bgcolor="teal"></td>
+    <td width="70%" height="25" bgcolor="teal"></td>
+    <td width="15%" height="25" bgcolor="teal"></td>
+</tr>
+<tr>
+    <td width="15%" height="50"></td>
+    <td width="70%" height="50" align="center"><b><font face="arial black" size="+4" color="Teal">DRMADСКОЕ БАРАХЛО</font></b></td>
+    <td width="15%" height="50"></td>
+</tr>
+<tr>
+    <td width="15%" height="25" bgcolor="teal"></td>
+    <td width="70%" height="25" bgcolor="teal"></td>
+    <td width="15%" height="25" bgcolor="teal"></td>
+</tr>
+<tr>
+    <td width="15%" height="25" bgcolor="#60C0C0"></td>
+    <td width="70%" height="25" bgcolor="#60C0C0"></td>
+    <td width="15%" height="25" bgcolor="#60C0C0"></td>
+</tr>
+<tr>
+    <td width="15%" height="100%" bgcolor="#60C0C0"></td>
+    <td width="70%" height="100%">
+	
+    <table border="0" bordercolor="teal" width="100%" height="100%" cellpadding="10">
+    <tr>
+    <td>
+	
+    <!---> 	
+
+<TABLE ALIGN=CENTER CELLPADDING=0 BGCOLOR="Teal" WIDTH="100%" HEIGHT="60">
+<TR>
+<TD ALIGN="CENTER">
+<B>
+<FONT FACE="Arial" color="white" SIZE="4">
+Климентьев К.Е. Микрозадержки на LabVIEW<BR>
+</B>
+</FONT>
+</TD>
+</TR>
+</TABLE>
+
+</FONT><P>Поставим перед собой задачу: средствами LabVIEW сформировать временную задержку очень малой длительности, 
+например, 10 мкс. В статье <a href="lvrt.html">“LabVIEW и реальное время”</a> продемонстрировано, как формировать подобные задержки при помощи “музыкального” канала системного таймера. Здесь будет предложено еще более простое решение.</P>
+<P>Будем формировать задержки при помощи обыкновенного пустого цикла (см. рис. 1).</P></FONT>
+
+<CENTER>
+<IMG SRC="Image89.gif"><BR>
+Рис. 1. Виртуальный прибор “Микрозадержка”
+</CENTER>
+
+<P>Сразу же отметим: при помощи такого подхода нельзя формировать произвольное количество произвольных задержек в произвольные моменты времени. Рано или поздно сработает “стратегический планировщик” Windows и отберет процессорное время у потока, формирующего задержки, невзирая на его высокий приоритет. Тем не менее, сформировать несколько последовательных задержек продолжительностью несколько десятков микросекунд при помощи этого метода вполне можно.</P>
+<P>Модель продолжительности выполнения цикла выглядит примерно так: </P><BR>
+<FONT FACE="Symbol" SIZE=2>D</FONT>T=N<FONT FACE="Symbol" SIZE=2>ґD</FONT>C+C,
+<P>где N – количество итераций цикла; 
+<FONT FACE="Symbol" SIZE=2>D</FONT> C - длительность одной итерации; 
+C – накладные расходы на передачу управления виртуальному прибору, на организацию цикла и т.п. 
+Будем считать, что <FONT FACE="Symbol" SIZE=2>D</FONT> C=const и C=const (хотя на самом деле это не совсем так). 
+Соответственно, для организации задержки длительностью <FONT FACE="Symbol" SIZE=2>D</FONT> T потребуется количество итераций </P>
+</FONT><P>N=(<FONT FACE="Symbol" SIZE=2>D</FONT>T-C)/<FONT FACE="Symbol" SIZE=2>D</FONT>C.</P>
+</FONT><P>Таким образом, для применения метода нужно знать значения <FONT FACE="Symbol" SIZE=2>D</FONT> C и C, соответствующие конкретной версии LabVIEW, конкретной операционной системе и конкретному компьютеру. </P>
+<I><P>Примечание: на самом деле, как продемонстрировано в статье <a href="lvrt.html">“LabVIEW и реальное время”</a>, это совсем не константы. Но в условиях и ограничениях решаемой задачи этим обстоятельством можно пренебречь.</P>
+</I><P>Для того, чтобы определить <FONT FACE="Symbol" SIZE=2>D</FONT> C и C, организуем две произвольные задержки с разными количествами итераций (например, N</FONT><SUB>1</SUB></FONT>=100000 и N</FONT><SUB>2</SUB></FONT>=250000) и измерим их длительности (технику измерений см. в статье Грэхэма Вайдмэна <a href="lvideman.html">“Изучение LabVIEW с помощью QueryPerformanceCounter”</a> или в моей <a href="lvdll.html">“Доступ из LabVIEW к DLL”</a>). Получим систему из двух линейных уравнений</P>
+</FONT>N<SUB>1</SUB><FONT FACE="Symbol" SIZE=2>ґD</FONT>C+C=<FONT FACE="Symbol" SIZE=2>D</FONT>T<SUB>1</SUB>;<br>
+N<SUB>2</SUB><FONT FACE="Symbol" SIZE=2>ґD</FONT>C+C=<FONT FACE="Symbol" SIZE=2>D</FONT>T<SUB>2</SUB>,
+</FONT><P>из которой <p>
+<FONT FACE="Symbol" SIZE=2>D</FONT>C=(<FONT FACE="Symbol" SIZE=2>D</FONT>T<SUB>1</SUB>-<FONT FACE="Symbol" SIZE=2>D</FONT>T<SUB>2</SUB>)/(N<SUB>1</SUB>-N<SUB>2</SUB>); <br>
+C=(N<SUB>1</SUB><FONT FACE="Symbol" SIZE=2>ґD</FONT>T<SUB>2</SUB>-N<SUB>2</SUB><FONT FACE="Symbol" SIZE=2>ґD</FONT>T<SUB>1</SUB>)/(N<SUB>1</SUB>-N<SUB>2</SUB>).</P>
+<P>Используя этот метод, на 360МГц и 2ГГц машинах удавалось получать 10-микросекундные задержки с погрешностью <FONT FACE="Symbol" SIZE=2>±</FONT> 2 мкс.</P></FONT>
+
+<hr>
+<center>
+(с) Constantin E. Climentieff aka DrMad,
+<a href="mailto:drmad@dr.com"> mailto: drmad@dr.com</a> * <a href="http://drmad.chat.ru/">http://drmad.chat.ru</a>
+</center>
+    </td>
+    </tr>
+    </table>
+    </td>
+
+    <td width="15%" height="100%" bgcolor="#60C0C0"></td>
+</tr>
+</table>
+
+</body>
+</html>
+

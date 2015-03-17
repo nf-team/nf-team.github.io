@@ -1,0 +1,277 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+
+<html>
+<head>
+<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=utf-8">
+<title>Основы графического программирования в среде LabVIEW</title>
+<style type="text/css">
+   BODY {font-family:Arial; font-size:10pt; margin-left:10;margin-right:10} 
+   TD {font-family:Arial; font-size:10pt}
+   P {font-family:Arial; font-size:10pt; text-align:justify}
+   LI {font-family:Arial; font-size:10pt}
+   UL {font-family:Arial; font-size:10pt}   
+   PRE {font-family:Tahoma; font-size:10pt}
+   STRONG  {font-family:Arial; font-size:10pt}
+   CENTER {font-family:Arial; font-size:10pt}
+</style>	
+</head>
+
+<body>
+<table align="center" width="100%" cellspacing="0" cellpadding="0" border="0">
+<tr>
+    <td width="15%" height="25" bgcolor="teal"></td>
+    <td width="70%" height="25" bgcolor="teal"></td>
+    <td width="15%" height="25" bgcolor="teal"></td>
+</tr>
+<tr>
+    <td width="15%" height="50"></td>
+    <td width="70%" height="50" align="center"><b><font face="arial black" size="+4" color="Teal">DRMADСКОЕ БАРАХЛО</font></b></td>
+    <td width="15%" height="50"></td>
+</tr>
+<tr>
+    <td width="15%" height="25" bgcolor="teal"></td>
+    <td width="70%" height="25" bgcolor="teal"></td>
+    <td width="15%" height="25" bgcolor="teal"></td>
+</tr>
+<tr>
+    <td width="15%" height="25" bgcolor="#60C0C0"></td>
+    <td width="70%" height="25" bgcolor="#60C0C0"></td>
+    <td width="15%" height="25" bgcolor="#60C0C0"></td>
+</tr>
+<tr>
+    <td width="15%" height="100%" bgcolor="#60C0C0"></td>
+    <td width="70%" height="100%">
+	
+    <table border="0" bordercolor="teal" width="100%" height="100%" cellpadding="10">
+    <tr>
+    <td>
+	
+    <!---> 	
+
+<TABLE ALIGN=CENTER CELLPADDING=0 BGCOLOR="Teal" WIDTH="100%">
+<TR>
+<TH>
+ <FONT SIZE=+1 COLOR="White">  
+Климентьев К.Е. <br>
+Основы графического программирования
+в среде LabVIEW. Фрагмент 4<br>
+</FONT>
+</TH>
+</TR>
+</TABLE>
+
+<br><a href="lv0.html"><img src="back.gif"></a><br>
+
+<h2>
+<a name="m2">5.2. Узел интерфейса к внешнему коду</a>
+</h2>
+
+<table>
+<tr>
+<td width="10%" valign="top" align="left">
+<img src="lv_cin.gif" border=0 alt="">
+</td>
+<td width="90%">
+<p>
+В случае управления нестандартным оборудованием или применения сложных алгоритмов обработки данных возникает необходимость использования в ВП фрагментов, написанных на языках высокого уровня, например, на Си. Эта возможность доступна в LabVIEW благодаря узлу "Code Interface Node" ("Узел интерфейса к внешнему коду"). Английская аббревиатура термина - CIN, поэтому узлы интерфейса к внешнему коду часто называют CIN-узлами.
+</td>
+</tr>
+</table>
+</p>
+
+<p><i>
+Примечание. Существует также возможность обращения к коду, оформленному в виде внешних библиотек динамической компоновки (DLL).
+</i></p>
+<p>
+Правила конфигурирования CIN-узлов рассмотрим на конкретном примере. 
+</p>
+
+<p>
+<b>
+<table align="center" width="80%"><tr><td>
+<b>Требуется создать функциональный узел, выполняющий чтение содержимого из двоичного файла, побайтовую сортировку данных и запись результата в другой файл. Входными параметрами для узла являются имена входного и выходного файлов. 
+</b></td></tr></table></b>
+</p>
+<p>
+Шаг 1. Создайте новый субВП. Разместите на лицевой панели два средства управления типа "Path" ("Путь доступа к файлу").
+</p>
+<p>
+Шаг 2. В окне блок-схемы разместите объект типа "Code Interface Node" ("Узел интерфейса к внешнему коду"), выбрав его из палитры "Miscellaneous" ("Разное"). По умолчанию он имеет  вход только для одного параметра. Инструментом "стрелочка" увеличьте размеры пиктограммы узла так, чтобы нашлось место для двух параметров (см. Рисунок 4.8).
+</p>
+	 
+<p>
+<div align="center">
+<img src="lv4_8.gif" border=0 alt="">
+<br> Рисунок 4.8. <br>
+Связывание терминалов со входами CIN-узла
+</div>
+</p>
+
+<p>
+<i>	
+Примечание. Пиктограмма CIN-узла имеет вид "таблички". Каждая строка таблички разделена на два поля, но соответствует одному параметру.
+</i></p>
+<p>
+Шаг 3. При помощи инструмента "катушка" свяжите терминалы средств управления с соответствующими входами узла. 
+</p>
+<p>
+Шаг 4. Щелкните правой кнопкой мыши на пиктограмме CIN-узла и выберите из всплывающего меню пункт "Create .c file" ("Создать файл с текстом на языке Си"). В появившейся форме определите для этого файла имя (например, example.c) и местоположение (например, в каталоге c:\example).
+</p>
+<p><i>
+Примечание. В LabVIEW версии 3.0 этот пункт меню называется "Create .h file" ("Создать заголовочный файл"). Файл с текстом программы на языке Си пользователь должен создавать самостоятельно.
+</i></p>
+<p>
+Шаг 5. Обратитесь ко вновь созданному файлу. Он имеет следующий вид (комментарии переведены на русский язык):
+</p>
+
+<table bgcolor="silver">
+<tr>
+<td width="80%">
+<pre>
+<font face="Courier">
+/* Исходный код для CIN-узла */
+#include "extcode.h"
+
+/* "Заглушки" для необязательных функций */
+UseDefaultCINInit
+UseDefaultCINDispose
+UseDefaultCINAbort
+UseDefaultCINLoad
+UseDefaultCINUnload
+UseDefaultCINSave
+
+CIN MgErr CINRun(Path _, Path _);
+
+CIN MgErr CINRun(Path _, Path _) {
+
+/* ВВОДИТЕ СВОЙ КОД СЮДА */
+
+ return noErr;
+}
+</font>
+</pre>
+</td>
+</tr>
+</table>
+
+<p>	
+"Главная" функция CIN-узла носит наименование CINRun(). Именно в нее требуется поместить текст алгоритма на языке Си, выполняющий требуемые действия.
+</p> 
+
+<p>
+Шаг 6. В тексте, описывающем алгоритм работы CIN-узла, запрещено использование стандартных для языка Си функций и описателей типов переменных. Вместо них необходимо использовать функции и типы, описанные в Приложении Б.  Вот как будет выглядеть текст процедуры CINRun() с учетом этих ограничений:
+</p>
+
+<table bgcolor="silver">
+<tr>
+<td width="80%">
+<pre>
+<font face="Courier">
+CIN MgErr CINRun(Path s1, Path s2) {
+
+ File  f1, f2; /* Хэндлы открытых файлов */
+ int32 q;      /* Счетчик прочитанных и записанных байтов */
+ uInt8 *b;     /* Указатель на буфер */
+ uInt8 i,j,tmp;
+	
+b = (uInt8 *) DSNewPtr(BUFSIZE); 
+FMOpen(&amp;f1,s1,openReadOnly,denyReadWrite); 
+FcreateAlways(&amp;f2,s2,0x80,openReadWrite,denyReadWrite,"");
+FMRead  (f1, BUFSIZE, &amp;q, b);
+
+for (i=2;i<q;i++) {
+ j=i;
+ while ((j>1)&amp;&amp;(b[j-1]&gt;b[j]))  {
+   tmp=b[j];
+   b[j]=b[j-1];
+   b[j-1]=tmp;
+   j--; 
+ }
+}
+	
+FMWrite (f2, BUFSIZE, &amp;q, b);
+FMClose (f1); 
+FMClose (f2);
+DSDisposePtr(b);
+return noErr;
+}
+</font>
+</pre>
+</td>
+</tr>
+</table>
+
+<p>
+Шаг 7.  Откомпилируйте полученный файл example.c. 
+</p>
+<p>
+Компиляция 16-битового CIN-кода для LabVIEW 3.x и 4.x может осуществляться только при помощи компилятора фирмы Watcom. Предположим, что этот компилятор установлен в каталоге c:\watcom, а система LabVIEW - в каталоге c:\labview. Для описания Вашего проекта cоздайте файл example.lvm со следующим содержимым:
+</p>
+
+<table bgcolor="silver">
+<tr>
+<td width="80%">
+<pre>
+<font face="Courier">
+name=EXAMPLE
+type=CIN
+codeDir=C:\EXAMPLE
+wcDir=C:\WATCOM
+cinToolsDir=C:\LABVIEW\CINTOOLS
+!include $(cinToolsDir)\generic.mak
+</font>
+</pre>
+</td>
+</tr>
+</table>
+
+<p>
+Запустите компиляцию командой wmake /f example.lvm.
+</p>
+<p>
+Компиляция 32-битового CIN-кода для LabVIEW 5.x и 6.x может осуществляться при помощи компилятора Visual C/C++ фирмы Microsoft. Предположим, что этот компилятор установлен в каталоге c:\vc, а система LabVIEW - в каталоге c:\labview. Проследите, чтобы в глобальной системной среде имелось определение CINTOOLSDIR=C:\LABVIEW\CINTOOLS. Для описания Вашего проекта создайте файл example.lvm со следующим содержимым:
+</p>
+
+<table bgcolor="silver">
+<tr>
+<td width="80%">
+<pre>
+<font face="Courier">
+name=EXAMPLE
+type=CIN
+!include $(CINTOOLSDIR) \ntlvsb.mak
+</font>
+</pre>
+</td>
+</tr>
+</table>
+	
+<p>
+Запустите компиляцию командой nmake /f example.lvm.
+</p>
+<p>
+Шаг 8. Результатом успешной компиляции должен быть файл с расширением .lsb, например example.lsb. Щелкните правой кнопкой мыши на пиктограмме CIN-узла, выберите в меню пункт "Load Code Resource" ("Загрузить кодовый ресурс") и укажите в появившейся форме Ваш файл example.lsb. Сохраните ВП.
+</p>
+
+<p><i>
+Примечание. В отличие от "обычных", ВП с CIN-узлами не могут быть перенесены из одной версии LabVIEW в другую. 
+</i></p>
+
+<hr>
+(с) Constantin E. Climentieff aka DrMad,
+<a href="mailto:drmad@dr.com"> mailto: drmad@dr.com</a> * <a href="http://www.chat.ru/~drmad">http://www.chat.ru/~drmad</a>
+<hr>
+
+
+    </td>
+    </tr>
+    </table>
+    </td>
+
+    <td width="15%" height="100%" bgcolor="#60C0C0"></td>
+</tr>
+</table>
+
+</body>
+</html>
+

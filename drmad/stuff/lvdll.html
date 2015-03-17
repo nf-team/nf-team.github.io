@@ -1,0 +1,469 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+
+<html>
+<head>
+<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=utf-8">
+<TITLE>Доступ из LabVIEW к DLL</TITLE>
+<style type="text/css">
+   BODY {font-family:Arial; font-size:10pt; margin-left:10;margin-right:10} 
+   TD {font-family:Arial; font-size:10pt}
+   P {font-family:Arial; font-size:10pt; text-align:justify}
+   LI {font-family:Arial; font-size:10pt}
+   UL {font-family:Arial; font-size:10pt}   
+   PRE {font-family:Tahoma; font-size:10pt}
+   STRONG  {font-family:Arial; font-size:10pt}
+   CENTER {font-family:Arial; font-size:10pt}
+</style>	
+</head>
+
+<body>
+<table align="center" width="100%" cellspacing="0" cellpadding="0" border="0">
+<tr>
+    <td width="15%" height="25" bgcolor="teal"></td>
+    <td width="70%" height="25" bgcolor="teal"></td>
+    <td width="15%" height="25" bgcolor="teal"></td>
+</tr>
+<tr>
+    <td width="15%" height="50"></td>
+    <td width="70%" height="50" align="center"><b><font face="arial black" size="+4" color="Teal">DRMADСКОЕ БАРАХЛО</font></b></td>
+    <td width="15%" height="50"></td>
+</tr>
+<tr>
+    <td width="15%" height="25" bgcolor="teal"></td>
+    <td width="70%" height="25" bgcolor="teal"></td>
+    <td width="15%" height="25" bgcolor="teal"></td>
+</tr>
+<tr>
+    <td width="15%" height="25" bgcolor="#60C0C0"></td>
+    <td width="70%" height="25" bgcolor="#60C0C0"></td>
+    <td width="15%" height="25" bgcolor="#60C0C0"></td>
+</tr>
+<tr>
+    <td width="15%" height="100%" bgcolor="#60C0C0"></td>
+    <td width="70%" height="100%">
+	
+    <table border="0" bordercolor="teal" width="100%" height="100%" cellpadding="10">
+    <tr>
+    <td>
+	
+    <!---> 	
+
+<TABLE ALIGN=CENTER CELLPADDING=0 BGCOLOR="Teal" WIDTH="100%" HEIGHT="60">
+<TR>
+<TD ALIGN="CENTER">
+<B>
+<FONT FACE="Arial" color="white" SIZE="4">
+Климентьев К.Е. Доступ из LabVIEW к DLL<BR>
+</B>
+</FONT>
+</TD>
+</TR>
+</TABLE>
+
+<FONT FACE="Arial" SIZE=2><P>Почему вдруг я решил добавить “свои 5 коп.” ко вроде бы неплохо освещенному (см., например, <A HREF="http://www.labview.ru/DLLcall.pdf" TARGET=_NONE>http://www.labview.ru/DLLcall.pdf</A>) вопросу? Дело в том, что при практическом использовании “Call Library Function” приходится сталкиваться с рядом очень неочевидных тонкостей, которые, как оказалось, далеко не всем по зубам. </P>
+</FONT><FONT FACE="Arial" SIZE=4><CENTER><H4>1. Что такое DLL?</H4></CENTER>
+</FONT><FONT FACE="Arial" SIZE=2><P>DLL (Dynamic Link Library) – это динамически компонуемая библиотека, т.е. набор “популярных” процедур и функций, которые оформлены в виде отдельного программного модуля, и к которым могут обращаться любые программы. В частности, практически все Windows-программы в процессе своей работы обязательно обращаются к десяткам общедоступных библиотек от Microsoft. Например,</P>
+
+<UL>
+<LI>KERNEL32.DLL – набор стандартных системных функций Windows для работы с файлами, памятью, для запуска и завершения процессов и потоков и т.п.;</LI>
+<LI>USER32.DLL – системные функции Windows для поддержки оконного интерфейса, мыши и клавиатуры;</LI>
+<LI>GDI32.DLL – графические функции Windows;</LI>
+<LI>WSOCK32.DLL – сетевые функции;</LI>
+<LI>ADVAPI.DLL – служебные и вспомогательные функции Windows, например, для шифрования-дешифрования данных, для работы с реестром и т.п.</LI></UL>
+
+<P>Нередко полезные DLL появляются на компьютере вместе со вновь установленными приложениями. Кроме того, программист может создавать свои DLL самостоятельно.</P>
+</FONT><FONT FACE="Arial" SIZE=4><CENTER><H4>2. Как устроен и работает механизм DLL?</H4></CENTER>
+</FONT><FONT FACE="Arial" SIZE=2><P>Для успешной работы с DLL необходимо хотя бы самое поверхностное представление о принципах ее устройства и использования.</P>
+<P>“Типичная” DLL (см. рис. 1, б) представляет собой программный модуль, содержащий некоторое количество процедур и функций. Для того, чтобы к этим процедурам и функциям можно было обращаться из других программ, в DLL имеется специальная <I>таблица экспорта</I>, которая содержит имена функций и их стартовые адреса (“точки входа”) внутри DLL.</P>
+<P>Наоборот, “типичная” прикладная программа (см. рис. 1, а) для доступа к функциям DLL содержит <I>таблицы импорта, </I>в которые внесены имена DLL-библиотек и тех процедур и функций, которые программу интересуют. </P>
+</FONT><P><CENTER><IMG SRC="lvdll1.gif"></CENTER></P>
+<FONT FACE="Arial" SIZE=2><P><CENTER>Рис 1. Форматы программных модулей</CENTER></P>
+<P>В “типичном” случае в процессе запуска программы Windows: </P>
+
+<OL>
+<LI>прочитывает из программы имена DLL-библиотек и загружает их в память;</LI>
+<LI>загружает в память саму программу;</LI>
+<LI>прочитывает из программы имена функций, ищет эти имена (и соответствующие им адреса) в загруженных DLL и вставляет найденные адреса функций внутрь программы в нужных местах;</LI>
+<LI>передает управление программе.</LI></OL>
+
+<P>Нас будет интересовать “нетипичный” случай – когда программа заранее не знает, какие функции из какой DLL будет использовать (это так называемый “неявный импорт”). У таких программ таблица импорта может отсутствовать. Программа самостоятельно:</P>
+<OL>
+
+<LI>загружает требуемую DLL-библиотеку в память;</LI>
+<LI>зная имя интересующей функции, определяет ее адрес внутри загруженной DLL;</LI>
+<LI>обращается к функции по найденному адресу.</LI></OL>
+
+<P>Механизм “Call Library Function” в LabVIEW работает именно так!</P>
+</FONT><FONT FACE="Arial" SIZE=4><CENTER><H4>3. Примеры вызова функций</H4></CENTER>
+</FONT><FONT FACE="Arial" SIZE=2><P>Пусть “подопытным кроликом” для нас послужит классическая функция “MessageBox” из библиотеки USER32.DLL. В любом справочнике по Win32 API можно найти ее описание, повествующее, что функция требует 4 параметра:</P>
+
+<UL>
+<LI>целое 32-битовое число – идентификатор родительского окна (либо 0, если родительского окна нет);</LI>
+<LI>текстовая строка, которая будет показана в окне;</LI>
+<LI>текстовая строка, которая будет показана в заголовке окна;</LI>
+<LI>целое 16-битовое число - состав и вид кнопок (0 – кнопка “ОК”, 1- “OK” и “Cancel”, 2 – “Abort”, “Retry” и “Ignore”, и т.п.).</LI></UL>
+
+<P>Давайте проверим, присутствует ли эта функция в USER32.DLL. Я предпочитаю пользоваться знаменитой программой HIEW Евгения Сусликова (см. рис. 2), хотя можно воспользоваться, например, утилитой DUMPBIN, либо просто посмотреть внутрь DLL-библиотеки в любом вьювере.</P>
+</FONT><P><CENTER><IMG SRC="lvdll2.gif"></CENTER></P>
+<FONT FACE="Arial" SIZE=2><P><CENTER>Рис. 2. Таблица экспорта библиотеки USER32.DLL</CENTER></P>
+<P>“Вот тебе и здрасьте” (с). Нет в библиотеке никакой функции “MessageBox”, а вместо нее присутствует какая-то “MessageBoxA”. Все правильно. На самом деле, в стандартных динамических библиотеках Windows для многих функций, которые работают с текстовыми параметрами, имеются два варианта: </P>
+
+<UL>
+<LI>один с именем, заканчивающимся на “A” (для “обычных” ASCII-строк); </LI>
+<LI>другой с именем, заканчивающимся на “W” (для UNICODE-строк).</LI></UL>
+
+<P>“Умные” компиляторы (Borland Delphi, Borland C/C++ Builder, MS Visual C/C++ и пр.) сами определяют тип используемой строки и вставляют в таблицы импорта программы “правильное” имя. Поэтому-то в справочниках и приводятся имена функций без “A” и “W”. Но если мы решили вызывать функции из DLL напрямую, в том числе и средствами LabVIEW, нам нужны “подлинные” имена!</P>
+<P>Теперь можно рассмотреть конкретные примеры непосредственного вызова функции “MessageBoxA” из библиотеки USER32.DLL.</P>
+<P>Вот как это делается на языке Си:</P></FONT>
+
+<FONT FACE="Courier New" SIZE=2>
+<PRE>
+#include &lt;windows.h&gt;
+typedef WORD (<B>WINAPI</B>* TTT) (DWORD, BYTE *, BYTE *, WORD);
+TTT _MessageBox; h : DWORD;
+main() {
+	h = LoadLibrary("USER32.DLL");
+	_MessageBox = (TTT)GetProcAddress(GetModuleHandle("USER32.DLL"),"MessageBoxA");
+	_MessageBox(0, "Текст в окне", "Заголовок окна", 0);
+}
+</PRE>
+</FONT>
+
+<FONT FACE="Arial" SIZE=2><P>Вот как это делается на Паскале (Borland Delphi):</P></FONT>
+<FONT FACE="Courier New" SIZE=2><PRE>
+program EXAMPLE;
+{$APPTYPE CONSOLE}
+uses windows;
+{$R *.RES}
+type TTT = function ( h: DWORD; s1, s2: PCHAR; t : WORD) : WORD; <B>stdcall</B>;
+VAR _MessageBox : TTT; h : THandle;</P>
+begin
+	h:=LoadLibrary('USER32.DLL');
+	_MessageBox := GetProcAddress( GetModuleHandle('USER32.DLL'), 'MessageBoxA');
+	_MessageBox(0, 'Строка в окне', 'Строка в заголовке', 0);
+end.</PRE>
+
+</FONT><FONT FACE="Arial" SIZE=2><P>Ну и пример на LabVIEW:</P>
+<OL>
+
+<LI>в окно блок-схемы кладется узел “Call Library Node”, по нему кликается правой кнопкой мыши и в меню выбирается пункт “Configure” (см. рис. 3).</LI>
+</FONT><P><CENTER><IMG SRC="lvdll3.gif"></CENTER></P>
+<FONT FACE="Arial" SIZE=2><CENTER>Рис. 3. Узел “Call Library Node”</CENTER>
+<LI>в открывшемся окне описывается формат вызова функции – из какой библиотеки она берется, какие у нее параметры и т.п. (см. рис. 4).</LI>
+</FONT><P><CENTER><IMG SRC="lvdll4.gif"></CENTER></P>
+<FONT FACE="Arial" SIZE=2><P><CENTER>Рис. 4. Описание формата вызова функции</CENTER></P>
+<LI>Наконец, осталось нажать кнопку OK, присоединить к узлу нужные параметры (см. рис. 5) и запустить виртуальный прибор.</LI></OL>
+
+</FONT><P><CENTER><IMG SRC="lvdll5.gif"></CENTER></P>
+<FONT FACE="Arial" SIZE=2><P><CENTER>Рис. 5. Передача параметров</CENTER></P>
+<P>Ко всем трем примерам необходимо сделать несколько очень важных общих замечаний.</P>
+</FONT><FONT FACE="Arial" SIZE=4><CENTER><H4>3.1. Типы параметров</H4></CENTER>
+</FONT><FONT FACE="Arial" SIZE=2><P>Несмотря на то, что в высокоуровневых языках программирования используются десятки и сотни различных типов данных, на самом деле все они являются модификациями сравнительно небольшого набора “базовых” типов (см. табл 1).</P>
+<P>Массив какого-либо типа - это всего лишь указатель на его первый по счету элемент. Тоже самое можно сказать о сложных типах – “struct” в Си, “record” в Паскале и “cluster” в LabVIEW. Текстовая строка в Си – это массив байтов, заканчивающийся нулем, т.е. указатель на 8-битовый байт. В Паскале строка устроена похоже, только в конце нет нуля, зато самый первый по счету байт (т.е. байт с номером 0) – это не символ текста, а счетчик длины строки. UNICODE-строки устроены по такому же принципу, только это массивы не байтов, а 16-битовых слов. </P>
+<CENTER>
+Таблица 1 <BR>
+Соответствие типов
+</CENTER>
+</FONT>
+<CENTER>
+<TABLE BORDER CELLSPACING=1 BORDERCOLOR="#000000" CELLPADDING=9 WIDTH=803>
+<TR><TD WIDTH="29%" VALIGN="TOP" BGCOLOR="#000000" HEIGHT=4 COLOR="#FFFFFF">
+<P><B><FONT FACE="Arial" SIZE=2>Си</B></FONT></TD>
+<TD WIDTH="17%" VALIGN="TOP" BGCOLOR="#000000" HEIGHT=4 COLOR="#FFFFFF">
+<B><FONT FACE="Arial" SIZE=2><P>Паскаль</B></FONT></TD>
+<TD WIDTH="54%" VALIGN="TOP" BGCOLOR="#000000" HEIGHT=4 COLOR="#FFFFFF">
+<B><FONT FACE="Arial" SIZE=2><P>“Базовый” тип</B></FONT></TD>
+</TR>
+<TR><TD WIDTH="29%" VALIGN="TOP">
+<FONT FACE="Arial" SIZE=2><P>WCHAR</FONT></TD>
+<TD WIDTH="17%" VALIGN="TOP">
+<FONT FACE="Arial" SIZE=2><P>WideChar</FONT></TD>
+<TD WIDTH="54%" VALIGN="TOP">
+<FONT FACE="Arial" SIZE=2><P>16-битовое слово</FONT></TD>
+</TR>
+<TR><TD WIDTH="29%" VALIGN="TOP">
+<FONT FACE="Arial" SIZE=2><P>LPSTR</FONT></TD>
+<TD WIDTH="17%" VALIGN="TOP">
+<FONT FACE="Arial" SIZE=2><P>Pchar</FONT></TD>
+<TD WIDTH="54%" VALIGN="TOP">
+<FONT FACE="Arial" SIZE=2><P>Массив 8-битовых байтов</FONT></TD>
+</TR>
+<TR><TD WIDTH="29%" VALIGN="TOP">
+<FONT FACE="Arial" SIZE=2><P>LPCSTR</FONT></TD>
+<TD WIDTH="17%" VALIGN="TOP">
+<FONT FACE="Arial" SIZE=2><P>Pchar</FONT></TD>
+<TD WIDTH="54%" VALIGN="TOP">
+<FONT FACE="Arial" SIZE=2><P>Массив 8-битовых байтов</FONT></TD>
+</TR>
+<TR><TD WIDTH="29%" VALIGN="TOP">
+<FONT FACE="Arial" SIZE=2><P>LPWSTR</FONT></TD>
+<TD WIDTH="17%" VALIGN="TOP">
+<FONT FACE="Arial" SIZE=2><P>PwideChar</FONT></TD>
+<TD WIDTH="54%" VALIGN="TOP">
+<FONT FACE="Arial" SIZE=2><P>Массив 16-битовых слов</FONT></TD>
+</TR>
+<TR><TD WIDTH="29%" VALIGN="TOP">
+<FONT FACE="Arial" SIZE=2><P>LPCWSTR</FONT></TD>
+<TD WIDTH="17%" VALIGN="TOP">
+<FONT FACE="Arial" SIZE=2><P>PwideChar</FONT></TD>
+<TD WIDTH="54%" VALIGN="TOP">
+<FONT FACE="Arial" SIZE=2><P>Массив 16-битовых слов</FONT></TD>
+</TR>
+<TR><TD WIDTH="29%" VALIGN="TOP">
+<FONT FACE="Arial" SIZE=2><P>DWORD</FONT></TD>
+<TD WIDTH="17%" VALIGN="TOP">
+<FONT FACE="Arial" SIZE=2><P>Integer</FONT></TD>
+<TD WIDTH="54%" VALIGN="TOP">
+<FONT FACE="Arial" SIZE=2><P>Двойное слово 32 бита</FONT></TD>
+</TR>
+<TR><TD WIDTH="29%" VALIGN="TOP">
+<FONT FACE="Arial" SIZE=2><P>BOOL</FONT></TD>
+<TD WIDTH="17%" VALIGN="TOP">
+<FONT FACE="Arial" SIZE=2><P>LongBool</FONT></TD>
+<TD WIDTH="54%" VALIGN="TOP">
+<FONT FACE="Arial" SIZE=2><P>Двойное слово 32 бита</FONT></TD>
+</TR>
+<TR><TD WIDTH="29%" VALIGN="TOP">
+<FONT FACE="Arial" SIZE=2><P>PBOOL</FONT></TD>
+<TD WIDTH="17%" VALIGN="TOP">
+<FONT FACE="Arial" SIZE=2><P>^BOOL</FONT></TD>
+<TD WIDTH="54%" VALIGN="TOP">
+<FONT FACE="Arial" SIZE=2><P>Указатель на 32-битовое двойное слово</FONT></TD>
+</TR>
+<TR><TD WIDTH="29%" VALIGN="TOP">
+<FONT FACE="Arial" SIZE=2><P>PINT</FONT></TD>
+<TD WIDTH="17%" VALIGN="TOP">
+<FONT FACE="Arial" SIZE=2><P>^Integer</FONT></TD>
+<TD WIDTH="54%" VALIGN="TOP">
+<FONT FACE="Arial" SIZE=2><P>указатель на 16-битовое слово</FONT></TD>
+</TR>
+<TR><TD WIDTH="29%" VALIGN="TOP">
+<FONT FACE="Arial" SIZE=2><P>PWORD</FONT></TD>
+<TD WIDTH="17%" VALIGN="TOP">
+<FONT FACE="Arial" SIZE=2><P>^Word</FONT></TD>
+<TD WIDTH="54%" VALIGN="TOP">
+<FONT FACE="Arial" SIZE=2><P>указатель на 16-битовое слово</FONT></TD>
+</TR>
+<TR><TD WIDTH="29%" VALIGN="TOP">
+<FONT FACE="Arial" SIZE=2><P>PDWORD</FONT></TD>
+<TD WIDTH="17%" VALIGN="TOP">
+<FONT FACE="Arial" SIZE=2><P>^DWORD</FONT></TD>
+<TD WIDTH="54%" VALIGN="TOP">
+<FONT FACE="Arial" SIZE=2><P>указатель на 32-битовое двойное слово</FONT></TD>
+</TR>
+<TR><TD WIDTH="29%" VALIGN="TOP">
+<FONT FACE="Arial" SIZE=2><P>LPDWORD</FONT></TD>
+<TD WIDTH="17%" VALIGN="TOP">
+<FONT FACE="Arial" SIZE=2><P>PDWORD</FONT></TD>
+<TD WIDTH="54%" VALIGN="TOP">
+<FONT FACE="Arial" SIZE=2><P>указатель на 32-битовое двойное слово</FONT></TD>
+</TR>
+<TR><TD WIDTH="29%" VALIGN="TOP">
+<FONT FACE="Arial" SIZE=2><P>UCHAR, BYTE, char</FONT></TD>
+<TD WIDTH="17%" VALIGN="TOP">
+<FONT FACE="Arial" SIZE=2><P>Byte</FONT></TD>
+<TD WIDTH="54%" VALIGN="TOP">
+<FONT FACE="Arial" SIZE=2><P>8-битовый байт</FONT></TD>
+</TR>
+<TR><TD WIDTH="29%" VALIGN="TOP">
+<FONT FACE="Arial" SIZE=2><P>PUCHAR </FONT></TD>
+<TD WIDTH="17%" VALIGN="TOP">
+<FONT FACE="Arial" SIZE=2><P>^Byte</FONT></TD>
+<TD WIDTH="54%" VALIGN="TOP">
+<FONT FACE="Arial" SIZE=2><P>Указатель на 8-битовый байт</FONT></TD>
+</TR>
+<TR><TD WIDTH="29%" VALIGN="TOP">
+<FONT FACE="Arial" SIZE=2><P>SHORT</FONT></TD>
+<TD WIDTH="17%" VALIGN="TOP">
+<FONT FACE="Arial" SIZE=2><P>Smallint</FONT></TD>
+<TD WIDTH="54%" VALIGN="TOP">
+<FONT FACE="Arial" SIZE=2><P>16-битовое целое</FONT></TD>
+</TR>
+<TR><TD WIDTH="29%" VALIGN="TOP">
+<FONT FACE="Arial" SIZE=2><P>UINT, WORD, int</FONT></TD>
+<TD WIDTH="17%" VALIGN="TOP">
+<FONT FACE="Arial" SIZE=2><P>Integer</FONT></TD>
+<TD WIDTH="54%" VALIGN="TOP">
+<FONT FACE="Arial" SIZE=2><P>16-битовое слово</FONT></TD>
+</TR>
+<TR><TD WIDTH="29%" VALIGN="TOP">
+<FONT FACE="Arial" SIZE=2><P>PUINT</FONT></TD>
+<TD WIDTH="17%" VALIGN="TOP">
+<FONT FACE="Arial" SIZE=2><P>^UINT</FONT></TD>
+<TD WIDTH="54%" VALIGN="TOP">
+<FONT FACE="Arial" SIZE=2><P>указатель на 16-битовое слово</FONT></TD>
+</TR>
+<TR><TD WIDTH="29%" VALIGN="TOP">
+<FONT FACE="Arial" SIZE=2><P>ULONG, DWORD, double</FONT></TD>
+<TD WIDTH="17%" VALIGN="TOP">
+<FONT FACE="Arial" SIZE=2><P>Longint</FONT></TD>
+<TD WIDTH="54%" VALIGN="TOP">
+<FONT FACE="Arial" SIZE=2><P>32-битовое двойное слово</FONT></TD>
+</TR>
+<TR><TD WIDTH="29%" VALIGN="TOP">
+<FONT FACE="Arial" SIZE=2><P>PULONG</FONT></TD>
+<TD WIDTH="17%" VALIGN="TOP">
+<FONT FACE="Arial" SIZE=2><P>^ULONG</FONT></TD>
+<TD WIDTH="54%" VALIGN="TOP">
+<FONT FACE="Arial" SIZE=2><P>Указатель на 32-битовое двойное слово</FONT></TD>
+</TR>
+<TR><TD WIDTH="29%" VALIGN="TOP">
+<FONT FACE="Arial" SIZE=2><P>Int</FONT></TD>
+<TD WIDTH="17%" VALIGN="TOP">
+<FONT FACE="Arial" SIZE=2><P>Integer</FONT></TD>
+<TD WIDTH="54%" VALIGN="TOP">
+<FONT FACE="Arial" SIZE=2><P>16-битовое слово</FONT></TD>
+</TR>
+<TR><TD WIDTH="29%" VALIGN="TOP">
+<FONT FACE="Arial" SIZE=2><P>Long</FONT></TD>
+<TD WIDTH="17%" VALIGN="TOP">
+<FONT FACE="Arial" SIZE=2><P>LongInt</FONT></TD>
+<TD WIDTH="54%" VALIGN="TOP">
+<FONT FACE="Arial" SIZE=2><P>32-битовое двойное слово</FONT></TD>
+</TR>
+<TR><TD WIDTH="29%" VALIGN="TOP">
+<FONT FACE="Arial" SIZE=2><P>PVOID</FONT></TD>
+<TD WIDTH="17%" VALIGN="TOP">
+<FONT FACE="Arial" SIZE=2><P>Pointer</FONT></TD>
+<TD WIDTH="54%" VALIGN="TOP">
+<FONT FACE="Arial" SIZE=2><P>Указатель на 8-битовый байт</FONT></TD>
+</TR>
+<TR><TD WIDTH="29%" VALIGN="TOP">
+<FONT FACE="Arial" SIZE=2><P>HANDLE</FONT></TD>
+<TD WIDTH="17%" VALIGN="TOP">
+<FONT FACE="Arial" SIZE=2><P>THandle</FONT></TD>
+<TD WIDTH="54%" VALIGN="TOP">
+<FONT FACE="Arial" SIZE=2><P>32-битовое двойное слово</FONT></TD>
+</TR>
+</TABLE></CENTER>
+
+<FONT FACE="Arial" SIZE=4><CENTER><H4>3.2. Способы передачи параметров</H4></CENTER>
+</FONT><FONT FACE="Arial" SIZE=2><P>Все параметры в функцию и обратно обычно передаются через стек (и только иногда через регистры). Известно большое число различных способов передачи параметров, но чаще всего используются 3 из них:</P>
+
+<UL>
+<LI>формат языка Паскаль – параметры записываются в стек в том порядке, в каком они перечисляются, перед завершением функции стек очищается внутри ее;</LI>
+<LI>формат языка Си – параметры записываются в стек в обратном порядке по сравнению с тем, в каком они перечисляются, после завершения функции стек очищается в вызывающей программе;</LI>
+<LI>формат API-функций Microsoft (так называемый “stdcall”) - параметры записываются в стек в обратном порядке по сравнению с тем, в каком они перечисляются, перед завершением функции стек очищается внутри ее.</LI></UL>
+
+<P>Вот почему при вызове функций из стандартных DLL-библиотек Windows необходимо обязательно указывать, что формат передачи параметров соответствует соглашению “stdcall” (или “WINAPI”, что в данном случае тоже самое).</P>
+</FONT><FONT FACE="Arial" SIZE=4><CENTER><H4>4. Создаем DLL сами</H4></CENTER>
+</FONT><FONT FACE="Arial" SIZE=2><P>Осталось рассмотреть самое интересное и сложное – самостоятельное создание DLL-библиотек для подсоединения к виртуальным приборам LabVIEW. Пусть нам нужна DLL, складывающая два числа. Для обеспечения совместимости потребуем, чтобы все функции использовали параметры в стиле “stdcall”.</P>
+<P>Вот исходный текст на Си (компилятор Borland C/C++ v5.02):</P></FONT>
+<FONT FACE="Courier New" SIZE=2>
+<PRE>
+#include &lt;windows.h&gt;
+void __export <B>__stdcall</B> MyFunc( DWORD x, DWORD y, DWORD *sum) {
+*sum = x+y;
+}
+</PRE>
+</FONT><FONT FACE="Arial" SIZE=2><P>Еще вариант для Си (компилятор MS Visual C/C++ v. 6.0):</P>
+</FONT>
+<FONT FACE="Courier New" SIZE=2>
+<PRE>
+#include &lt;windows.h&gt;
+#include "stdafx.h"
+#define EXPORT extern "C" __declspec (dllexport)
+EXPORT void CALLBACK MyFunc( DWORD x, DWORD y, DWORD *sum) {
+*sum = x+y;
+}
+</PRE>
+
+</FONT><FONT FACE="Arial" SIZE=2><P>А вот на Паскале (Borland Delphi):</P></FONT>
+<FONT FACE="Courier New" SIZE=2>
+<PRE>
+library MyDLL;
+uses SysUtils, Classes;</P>
+procedure MyFunc(x, y : integer; var sum : integer); <B>stdcall;</B>
+begin sum := x + y end;
+exports MyFunc;
+begin end.
+</PRE>
+
+</FONT><FONT FACE="Arial" SIZE=2><P>Итак, DLL-библиотеки успешно созданы. Давайте изучим таблицы экспорта скомпилированных библиотек при помощи HIEW (см. рис. 6). Кошмар! С задачей правильно справился только компилятор Borland Delphi, остальные же сгенерировали какую-то ерунду!</P>
+</FONT><P><CENTER><IMG SRC="lvdll6.gif"></CENTER></P>
+<FONT FACE="Arial" SIZE=2><P><CENTER>Рис. 6. Таблицы экспорта сгенерированных DLL</CENTER></P>
+<P>Этот эффект называется “манглинг” (от to mangle (англ.) – искажать, калечить). Компиляторы с языка Си дополняют имена функций своими служебными “префиксами” и “суффиксами”, и в таком виде помещают в таблицы экспорта DLL-библиотеки. Если вы обращаетесь к этим функциям из программы, созданной при помощи того же компилятора, проблем не возникнет – компилятор сам добавляет “хвосты”, сам же их и уберет в нужный момент. В противном случае необходимо точно знать правильное имя функции с учетом всех “закорючек”. Кстати, это тоже не панацея: LabVIEW некоторых версий просто отказывается видеть внутри DLL имена с “закорючками”!</P>
+<P>Решение проблемы в том, чтобы при компиляции DLL библиотек учитывать содержимое специальных DEF-файлов. Вот такой файл должен использоваться в Borland C/C++:</P>
+</FONT>
+
+<FONT FACE="Courier New" SIZE=2>
+<PRE>
+EXPORTS
+MyFunc = @MyFunc$qqsululpul
+</PRE>
+</FONT>
+
+<FONT FACE="Arial" SIZE=2><P>А вот такой в VC:</P>
+</FONT>
+
+<FONT FACE="Courier New" SIZE=2><P>
+<PRE>
+EXPORTS
+MyFunc
+</PRE>
+</FONT>
+
+<FONT FACE="Arial" SIZE=2><P>И только теперь все получится “чики-пики”.</P>
+</FONT><FONT FACE="Arial" SIZE=4><CENTER><H4>Приложение.<BR>
+Использование в LabVIEW функции “QueryPerformanceCounter”</H4></CENTER>
+</FONT><FONT FACE="Arial" SIZE=2><P>Эта функция возвращает количество тиков таймера, накопленное с момента включения компьютера. В Windows 95/98/ME используется системный таймер с частотой 1.19 МГц, а в Windows NT/2000/2003/XP/Vista может использоваться либо он, либо какой-нибудь другой таймер, интегрированный в материнскую плату. Поэтому функцию “QueryPerformanceCounter” нужно использовать в паре с функцией “QueryPerformanceFrequency”, которая возвращает частоту использованного таймера в герцах. Но речь не об этом.</P>
+<P>Вот описание заголовка функции из справочника:</P></FONT>
+
+<FONT FACE="Courier New" SIZE=2>
+<PRE>
+BOOL QueryPerformanceCounter (
+	LARGE_INTEGER *lpliPerformanceCount // адрес счетчика
+);
+</PRE>
+</FONT>
+
+<FONT FACE="Arial" SIZE=2><P>А вот расшифровка нестандартного типа LARGE_INTEGER в файле winnt.h:</P>
+</FONT>
+<FONT FACE="Courier New" SIZE=2>
+<PRE>
+#if defined(MIDL_PASS)
+typedef struct _LARGE_INTEGER {
+#else // MIDL_PASS
+typedef union _LARGE_INTEGER {
+#if defined(_ANONYMOUS_STRUCT)
+struct {
+DWORD LowPart;
+LONG HighPart;
+};
+#endif
+struct {
+DWORD LowPart;
+LONG HighPart;
+} u;
+#endif //MIDL_PASS
+LONGLONG QuadPart;
+} LARGE_INTEGER;
+</FONT>
+</PRE>
+<FONT FACE="Arial" SIZE=2><P>Не надо пугаться! Все эти зубодробительные конструкции языка Си описывают всего лишь пару последовательно расположенных 32-битовых двойных слов. Следовательно, параметр функции “QueryPerformanceCounter” – указатель на 32-битовое двойное слово, и его лучше всего проинтерпретировать как массив из двух 32-битовых чисел (см. рис. 7).</P>
+</FONT><P><CENTER><IMG SRC="lvdll7.gif"></CENTER></P>
+<FONT FACE="Arial" SIZE=2><P><CENTER>Рис. 7. Конфигурирование обращения к функции “QueryPerformanceCounter”</CENTER></P>
+<P>Как их использовать? Ну, например, преобразовать в единое вещественное число двойной точности по правилу z=x&lt;&lt;32+y (см. рис. 8).</P>
+</FONT><P><CENTER><IMG SRC="lvdll8.gif"></CENTER></P>
+<FONT FACE="Arial" SIZE=2><P><CENTER>Рис 8. Получение числового значения счетчика</CENTER></P>
+<P>Вот и все. Теперь при помощи этой функции можно довольно точно измерять моменты и интервалы времени.</P></FONT>
+
+<hr>
+<center>
+(с) Constantin E. Climentieff aka DrMad,
+<a href="mailto:drmad@dr.com"> mailto: drmad@dr.com</a> * <a href="http://drmad.chat.ru/">http://drmad.chat.ru</a>
+</center>
+
+
+    </td>
+    </tr>
+    </table>
+    </td>
+
+    <td width="15%" height="100%" bgcolor="#60C0C0"></td>
+</tr>
+</table>
+
+</body>
+</html>
+
